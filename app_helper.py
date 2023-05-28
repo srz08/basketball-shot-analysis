@@ -585,6 +585,8 @@ def detectionAPI(response, image_path):
     image = cv2.imread(image_path)
     detect_API(response, image)
 
-getVideoStreams("/Users/igautam/Documents/GitHub/basketball-shot-analysis/static/two_score_three_miss.mp4")
-#img = cv2.imread("temp.jpg")
-#detect_API([],img)
+# getVideoStreams("/Users/igautam/Documents/GitHub/basketball-shot-analysis/static/two_score_three_miss.mp4")
+# #img = cv2.imread("temp.jpg")
+# #detect_API([],img)
+
+print(detect_API(cv2.imread("temp.jpg", [])))
