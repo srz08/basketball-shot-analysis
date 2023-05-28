@@ -154,6 +154,33 @@ if __name__ == '__main__':
     input_video_path = "./input/new2.mp4"
     image_folder_path = "./input/input_images"
 
+    previous = {
+        'ball': np.array([0, 0]),  # x, y
+        'hoop': np.array([0, 0, 0, 0]),  # xmin, ymax, xmax, ymin
+        'hoop_height': 0
+    }
+    during_shooting = {
+        'isShooting': False,
+        'balls_during_shooting': [],
+        'release_angle_list': [],
+        'release_point': []
+    }
+    shooting_pose = {
+        'ball_in_hand': False,
+        'elbow_angle': 370,
+        'knee_angle': 370,
+        'ballInHand_frames': 0,
+        'elbow_angle_list': [],
+        'knee_angle_list': [],
+        'ballInHand_frames_list': []
+    }
+    shot_result = {
+        'displayFrames': 0,
+        'release_displayFrames': 0,
+        'judgement': ""
+    }
+
+
     # Call the function to convert the MP4 file to JPG images
     image_paths = convert_mp4_to_jpg(input_video_path, image_folder_path)
 
