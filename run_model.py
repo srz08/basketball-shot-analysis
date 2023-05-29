@@ -151,7 +151,7 @@ def generate_video(base_img, input_directory, output_video_path):
 if __name__ == '__main__':
 
     # CHANGE HERE
-    input_video_path = "./input/new2.mp4"
+    input_video_path = "/Users/simonzouki/Documents/Northwestern/Q3/CV/project/basketball-shot-analysis/static/sample_video.mp4"
     image_folder_path = "./input/input_images"
 
     previous = {
@@ -184,21 +184,22 @@ if __name__ == '__main__':
     # Call the function to convert the MP4 file to JPG images
     image_paths = convert_mp4_to_jpg(input_video_path, image_folder_path)
 
-    for filename in os.listdir(image_folder_path):
-        # Check if the file has an image extension (e.g., .jpg, .png)
-        if filename.endswith('.jpg') or filename.endswith('.png'):
-            # Read the image file using OpenCV
-            image_path = os.path.join(image_folder_path, filename)
-            image = cv2.imread(image_path)
-            process_frame_media_pipe(image,image_path)
+    # for filename in os.listdir(image_folder_path):
+    #     # Check if the file has an image extension (e.g., .jpg, .png)
+    #     if filename.endswith('.jpg') or filename.endswith('.png'):
+    #         # Read the image file using OpenCV
+    #         image_path = os.path.join(image_folder_path, filename)
+    #         image = cv2.imread(image_path)
+    #         process_frame_media_pipe(image,image_path)
 
     runs_folder = "./runs/"
     name = "run"
 
     delete_folder_contents(runs_folder)
 
-    run(weights='./weights/basket_rim.pt', source='./input/input_images', conf_thres=0.1, project=runs_folder, name=name)
+    big_images, big_boxes, big_scores, big_label = run(weights='./weights/basket_rim.pt', source='./input/input_images', conf_thres=0.1, project=runs_folder, classes=[0], name=name)
 
+    print(big_images[0])
     delete_folder_contents(image_folder_path)
 
     base_img = cv2.imread('./runs/run/frame_0000.jpg')
