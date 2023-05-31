@@ -2,10 +2,10 @@ import mediapipe as mp
 from yolov5.detect import run
 import cv2
 import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
 from scipy.optimize import curve_fit
+import pandas as pd
 import matplotlib.patches as patches
+import numpy as np
 import os
 
 def ball_under_basket(bball, rim, threshold):
@@ -13,7 +13,6 @@ def ball_under_basket(bball, rim, threshold):
     rim_x = (rim[0] + rim[2]) / 2
     ball_y = (bball[1] + bball[3]) / 2
     rim_y = (rim[1] + rim[3]) / 2
-    print(abs(ball_x - rim_x), ball_y - rim_y)
     if abs(ball_x - rim_x) < threshold and ball_y - rim_y > 0:
         return True
     else:
@@ -110,8 +109,8 @@ def get_angles_postions(frame):
             left_hand_coordinates = [left_hand_x, left_hand_y]
             right_hand_coordinates = [right_hand_x, right_hand_y]
 
-            head_x = head.x
-            head_y = head.y
+            head_x = head.x 
+            head_y = head.y 
 
 
             # Calculate elbow angle
@@ -131,7 +130,7 @@ def get_angles_postions(frame):
             # Draw angles on the frame
             cv2.putText(frame, f"Elbow Angle: {elbow_angle:.2f} deg", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
             cv2.putText(frame, f"Knee Angle: {knee_angle:.2f} deg", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-        else:
+        else:   
             return None
 
         # Draw pose landmarks on the frame
@@ -189,59 +188,10 @@ def release_end(boxes, classes, left_hand_coordinates, distance_threshold):
         return True
     else:
         return False
+    
 
-def trajectory_fit(shot_tracking, height, width, folder_path):
-
-    if os.path.exists(folder_path):
-        file_list = os.listdir(folder_path)
-        if len(file_list) > 0:
-            for file_name in file_list:
-                file_path = os.path.join(folder_path, file_name)
-                os.remove(file_path)
-
-    print("SHOT TRACKING",len(shot_tracking))
-    counter = 1
-    for shot in shot_tracking:
-        print("RELEASE FRAMES:",shot_tracking[shot]['release_frames'],len(shot_tracking[shot]['bball']),len(shot_tracking[shot]["release_tracking"]))
-        balls = shot_tracking[shot]['bball']
-        rims = shot_tracking[shot]['rim']
-        release_tracking = shot_tracking[shot]['release_tracking']
-        print("RELEASE TRACKING:",release_tracking)
-        trace = np.full((height, width, 3), 255, np.uint8)
-        for i in range(len(balls)):
-            box = balls[i]
-            if box is not None and release_tracking[i] != False:
-                x_min, y_min, x_max, y_max = box
-                x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
-                center_x = (x_min + x_max) // 2
-                center_y = (y_min + y_max) // 2
-                radius = min((x_max - x_min) // 2, (y_max - y_min) // 2)
-                cv2.circle(trace, (center_x, center_y), radius, (0, 0, 255), 2)  
-
-        for box in rims:
-            if box is not None:
-                x_min, y_min, x_max, y_max = box
-                cv2.rectangle(trace, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 2)
-                break
-
-        text = shot_tracking[shot]['result']
-        org = (10, 30)  # Coordinates of the bottom-left corner of the text
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 1
-        color = (255, 0, 0)  # Blue color for the text
-        thickness = 2
-        cv2.putText(trace, text, org, font, font_scale, color, thickness, cv2.LINE_AA)
-
-        file_name = "trace_with_balls_{}.jpg".format(counter)
-        cv2.imwrite(folder_path + file_name, trace)
-        counter = counter + 1
 
 def getVideoStreams(video_path):
-
-    shooting_time = []
-    release_angle = []
-    make_or_miss = []
-
     output_file = '../output/output_video.mp4'
 
     cap = cv2.VideoCapture(video_path)
@@ -258,18 +208,6 @@ def getVideoStreams(video_path):
         "rim": [],
         "distances": []
     }
-
-    shot_tracking = {
-        1: {
-            "bball": [],
-            "rim": [],
-            "result": None,
-            "release_frames": 0,
-            "release_tracking": []
-        }
-    }
-
-    shot_number = 1
     coords_tracking["bball"] = []
 
     # Load the video
@@ -279,9 +217,8 @@ def getVideoStreams(video_path):
     runs_folder = "../runs/"
 
     delete_folder_contents(runs_folder)
-    delete_folder_contents('../output/traces/')
 
-    fourcc = cv2.VideoWriter_fourcc(*'X264')
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # You can use other codecs as well, such as 'XVID'
     output_video = cv2.VideoWriter(output_file, fourcc, fps, (frame_width,frame_height))
 
     release_started = False
@@ -300,53 +237,44 @@ def getVideoStreams(video_path):
         out = get_angles_postions(frame)
         if out is not None:
             frame,head_x,head_y,left_hand_coordinates,right_hand_coordinates,elbow_angle,knee_angle,elbow_coo,knee_coo, left_shoulder = out
+
         img,boxes,scores,classes, height, width = detect_API(frame, 'temp.jpg',[])
+
         if 0 not in classes[0]:
             coords_tracking["bball"].append(None)
-            shot_tracking[shot_number]["bball"].append(None)
-            #shot_tracking[shot_number]["release_tracking"].append(False)
         elif classes[0][0] == 0:
             b_index = 0
             coords_tracking["bball"].append(boxes[0])
-            shot_tracking[shot_number]["bball"].append(boxes[0])
         else:
             b_index = 1
             coords_tracking["bball"].append(boxes[1])
-            shot_tracking[shot_number]["bball"].append(boxes[1])
 
         if 2 not in classes[0]:
             coords_tracking["rim"].append(None)
-            shot_tracking[shot_number]["rim"].append(None)
         elif classes[0][0] == 2:
             b_index = 0
             coords_tracking["rim"].append(boxes[0])
-            shot_tracking[shot_number]["rim"].append(boxes[0])
         else:
             b_index = 1
             coords_tracking["rim"].append(boxes[1])
-            shot_tracking[shot_number]["rim"].append(boxes[1])
 
         if coords_tracking["rim"][-1] is not None and coords_tracking["bball"][-1] is not None:
             coords_tracking["distances"].append(distance(coords_tracking["rim"][-1], coords_tracking["bball"][-1]))
 
 
-        release_start(boxes, classes, left_shoulder.y*height)
         left_hand_coordinates[0] *= width
         left_hand_coordinates[1] *= height
         right_hand_coordinates[0] *= width
         right_hand_coordinates[1] *= height
         if not release_started:
-            shot_tracking[shot_number]["release_tracking"].append(False)
             release_started = release_start(boxes, classes, head_y*height)
             if release_started and ball_near_body(boxes, classes, right_hand_coordinates, left_hand_coordinates, 100):
+                print("HEREEEE")
                 cv2.putText(frame, "RELEASE STARTED", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
                 release_ended = False
-
             else:
                 release_started = False
         elif release_started and not release_ended:
-            shot_tracking[shot_number]["release_frames"] = shot_tracking[shot_number]["release_frames"] + 1
-            shot_tracking[shot_number]["release_tracking"].append(True)
             release_ended = release_end(boxes, classes, left_hand_coordinates, 120)
             if release_ended:
                 cv2.putText(frame, "RELEASE ENDED", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
@@ -354,11 +282,8 @@ def getVideoStreams(video_path):
                 tracking_shot = True
                 if len(coords_tracking["bball"]) > 1:
                     angle = get_tangent_angle(coords_tracking["bball"][-1], find_suitable_ball(coords_tracking["bball"]))
-                    release_angle.append(angle)
                     cv2.putText(frame, "ANGLE SHOT: {}".format(round(angle,2)), (int(width/4), int(height/4)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
         elif release_started and release_ended and tracking_shot:
-            shot_tracking[shot_number]["release_frames"] = shot_tracking[shot_number]["release_frames"] + 1
-            shot_tracking[shot_number]["release_tracking"].append(True)
             # if coords_tracking["distances"][-1] - coords_tracking["distances"][-2] > 200:
             #     coords_tracking["distances"] = coords_tracking["distances"][:-1]
             #     coords_tracking["bball"] = coords_tracking["bball"][:-1]
@@ -369,34 +294,10 @@ def getVideoStreams(video_path):
                 cv2.putText(frame, "BALL MOVING AWAY", (int(width/4), int(height/4)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
                 tracking_shot = False
                 if ball_under_basket(coords_tracking["bball"][-1], coords_tracking["rim"][-1], 70):
-                    make_or_miss.append('Make')
                     cv2.putText(frame, "SCORE", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-                    shot_tracking[shot_number]["result"] = "Make"
-                    shot_number = shot_number + 1
-                    shot_tracking[shot_number] = {
-                                                    "bball": [],
-                                                    "rim": [],
-                                                    "result": None,
-                                                    "release_frames": 0,
-                                                    "release_tracking": []
-                                                }
                 else:
-                    make_or_miss.append('Miss')
                     cv2.putText(frame, "MISS", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-                    shot_tracking[shot_number]["result"] = "Miss"
-                    shot_number = shot_number + 1
-                    shot_tracking[shot_number] = {
-                                                    "bball": [],
-                                                    "rim": [],
-                                                    "result": None,
-                                                    "release_frames": 0,
-                                                    "release_tracking": []
-                                                }
-        else:
-            shot_tracking[shot_number]["release_tracking"].append(False)
-
         if release_started and release_ended and ball_near_body(boxes, classes, right_hand_coordinates, left_hand_coordinates, 50):
-            shot_tracking[shot_number]["release_tracking"].append(False)
             release_started = False
             release_ended = False
             tracking_shot = False
@@ -404,15 +305,11 @@ def getVideoStreams(video_path):
             coords_tracking["rim"] = []
             coords_tracking["distances"] = []
             cv2.putText(frame, "RESET", (int(width/1.5), int(height/1.5)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-    
+
         output_video.write(frame)
-    trajectory_fit(shot_tracking,height,width,'../output/traces/')
-    os.remove("temp.jpg")
+    # os.remove("temp.jpg")
     delete_folder_contents(runs_folder)
     output_video.release()
-    for i in range(len(release_angle)):
-        shooting_time.append(shot_tracking[i+1]['release_frames'])
-    return shooting_time[0:len(make_or_miss)],release_angle[0:len(make_or_miss)], make_or_miss
 
 def detect_API(img, img_path,response):
 
@@ -452,6 +349,8 @@ def detect_API(img, img_path,response):
             classes = np.array([[classes[0][index_0],classes[0][index_2]]])
             boxes = np.array([boxes[index_0],boxes[index_2]])
 
+
+
     for i, box in enumerate(boxes):
         if (scores[0][i] > 0.055):
             ymin = int(box[1])
@@ -472,4 +371,5 @@ def detect_API(img, img_path,response):
     return img,boxes,scores,classes, height, width
 
 if __name__ == '__main__':
-    print(getVideoStreams('../input/uploaded_video.mp4'))
+    getVideoStreams('../input/uploaded_video.mp4')
+    
