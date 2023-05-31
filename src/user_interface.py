@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from run_simon import getVideoStreams
+from run import getVideoStreams
 import os
 import subprocess
 from moviepy.editor import VideoFileClip

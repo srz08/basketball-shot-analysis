@@ -1,2 +1,5 @@
 runs/
 venv/
+input/
+src/__pycache__/
+output/
