@@ -357,8 +357,8 @@ def getVideoStreams(video_path):
                     release_angle.append(angle)
                     cv2.putText(frame, "ANGLE SHOT: {}".format(round(angle,2)), (int(width/4), int(height/4)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
         elif release_started and release_ended and tracking_shot:
-            shot_tracking[shot_number]["release_frames"] = shot_tracking[shot_number]["release_frames"] + 1
-            shot_tracking[shot_number]["release_tracking"].append(True)
+            # shot_tracking[shot_number]["release_frames"] = shot_tracking[shot_number]["release_frames"] + 1
+            # shot_tracking[shot_number]["release_tracking"].append(True)
             # if coords_tracking["distances"][-1] - coords_tracking["distances"][-2] > 200:
             #     coords_tracking["distances"] = coords_tracking["distances"][:-1]
             #     coords_tracking["bball"] = coords_tracking["bball"][:-1]
@@ -366,6 +366,7 @@ def getVideoStreams(video_path):
             #     output_video.write(frame)
             #     continue
             if coords_tracking["distances"][-1] > coords_tracking["distances"][-2] and coords_tracking["bball"][-1] is not None and coords_tracking["rim"][-1] is not None:
+                shot_tracking[shot_number]["release_tracking"].append(False)
                 cv2.putText(frame, "BALL MOVING AWAY", (int(width/4), int(height/4)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
                 tracking_shot = False
                 if ball_under_basket(coords_tracking["bball"][-1], coords_tracking["rim"][-1], 70):
@@ -392,6 +393,9 @@ def getVideoStreams(video_path):
                                                     "release_frames": 0,
                                                     "release_tracking": []
                                                 }
+            else:
+                shot_tracking[shot_number]["release_frames"] = shot_tracking[shot_number]["release_frames"] + 1
+                shot_tracking[shot_number]["release_tracking"].append(True)
         else:
             shot_tracking[shot_number]["release_tracking"].append(False)
 
