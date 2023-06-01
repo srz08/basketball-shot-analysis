@@ -99,6 +99,10 @@ def get_angles_postions(frame):
             head = landmarks[mp_pose.PoseLandmark.NOSE]
             left_hand = landmarks[mp_pose.PoseLandmark.LEFT_WRIST]
             right_hand = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST]
+            right_knee = landmarks[mp_pose.PoseLandmark.RIGHT_KNEE]
+            right_ankle = landmarks[mp_pose.PoseLandmark.RIGHT_ANKLE]
+            right_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP]
+
 
             # left_shoulder = [left_shoulder.x, left_shoulder.y]
 
@@ -206,8 +210,8 @@ def trajectory_fit(shot_tracking, height, width, folder_path):
     print("SHOT TRACKING", len(shot_tracking))
     counter = 1
     for shot in shot_tracking:
-        if shot == len(shot_tracking) - 1:
-            break
+        # if shot == len(shot_tracking) - 1:
+        #     break
         print("RELEASE FRAMES:", shot_tracking[shot]['release_frames'], len(shot_tracking[shot]['bball']),
               len(shot_tracking[shot]["release_tracking"]))
         balls = shot_tracking[shot]['bball']
@@ -311,7 +315,7 @@ def getVideoStreams(video_path):
     delete_folder_contents('../output/traces/')
 
     fourcc = cv2.VideoWriter_fourcc(*'X264')
-    output_video = cv2.VideoWriter(output_file, fourcc, fps, (frame_width,frame_height))
+    output_video = cv2.VideoWriter(output_file, fourcc, fps/2, (frame_width,frame_height))
 
     release_started = False
     tracking_shot = False
@@ -367,7 +371,7 @@ def getVideoStreams(video_path):
             shot_tracking[shot_number]["release_tracking"].append(False)
             release_started = release_start(boxes, classes, left_shoulder.y*height)
             if release_started and ball_near_body(boxes, classes, right_hand_coordinates, left_hand_coordinates, 100):
-                cv2.putText(frame, "RELEASE STARTED", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+                cv2.putText(frame, "RELEASE STARTED", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 2, cv2.LINE_AA)
                 release_ended = False
                 knee_angle_min = 366
                 elbow_angle_min = 366
@@ -382,13 +386,13 @@ def getVideoStreams(video_path):
             if elbow_angle > 90:
                 elbow_angle_min = min(elbow_angle_min, elbow_angle)
             if release_ended:
-                cv2.putText(frame, "RELEASE ENDED", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+                cv2.putText(frame, "RELEASE ENDED", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 2, cv2.LINE_AA)
                 release_ended = True
                 tracking_shot = True
                 if len(coords_tracking["bball"]) > 1:
                     angle = get_tangent_angle(coords_tracking["bball"][-1], find_suitable_ball(coords_tracking["bball"]))
                     release_angle.append(angle)
-                    cv2.putText(frame, "ANGLE SHOT: {}".format(round(angle,2)), (int(width/4), int(height/4)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+                    cv2.putText(frame, "ANGLE SHOT: {}".format(round(angle,2)), (int(width/4), int(height/4)), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 2, cv2.LINE_AA)
         elif release_started and release_ended and tracking_shot:
             if coords_tracking["rim"][-1] is not None:
                 rimm = find_suitable_ball(coords_tracking["rim"])
@@ -397,7 +401,7 @@ def getVideoStreams(video_path):
 
             if coords_tracking["bball"][-1] is not None and rimm is not None and ball_under_basket(coords_tracking["bball"][-1], rimm, 100):
                     make_or_miss.append('Make')
-                    cv2.putText(frame, "SCORE", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+                    cv2.putText(frame, "SCORE", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 2, cv2.LINE_AA)
                     shot_tracking[shot_number]["result"] = "Make"
                     shot_tracking[shot_number]["release_tracking"].append(False)
                     shot_number = shot_number + 1
@@ -413,11 +417,11 @@ def getVideoStreams(video_path):
                     elbow_angles.append(elbow_angle_min)
             elif coords_tracking["distances"][-1] > coords_tracking["distances"][-2] and coords_tracking["bball"][-1] is not None and coords_tracking["rim"][-1] is not None:
                 shot_tracking[shot_number]["release_tracking"].append(False)
-                cv2.putText(frame, "BALL MOVING AWAY", (int(width/4), int(height/4)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+                # cv2.putText(frame, "BALL MOVING AWAY", (int(width/4), int(height/4)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
                 tracking_shot = False
                 if ball_under_basket(coords_tracking["bball"][-1], coords_tracking["rim"][-1], 70):
                     make_or_miss.append('Make')
-                    cv2.putText(frame, "SCORE", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+                    cv2.putText(frame, "SCORE", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 2, cv2.LINE_AA)
                     shot_tracking[shot_number]["result"] = "Make"
                     shot_number = shot_number + 1
                     shot_tracking[shot_number] = {
@@ -428,10 +432,10 @@ def getVideoStreams(video_path):
                                                     "release_tracking": []
                                                 }
                     knee_angles.append(knee_angle_min)
-                    elbow_angles.append(elbow_angle_min)
+                    elbow_angles.append(elbow_angle)
                 else:
                     make_or_miss.append('Miss')
-                    cv2.putText(frame, "MISS", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+                    cv2.putText(frame, "MISS", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 2, cv2.LINE_AA)
                     shot_tracking[shot_number]["result"] = "Miss"
                     shot_number = shot_number + 1
                     shot_tracking[shot_number] = {
@@ -441,7 +445,7 @@ def getVideoStreams(video_path):
                                                     "release_frames": 0,
                                                     "release_tracking": []
                                                 }
-                    knee_angles.append(knee_angle)
+                    knee_angles.append(knee_angle_min)
                     elbow_angles.append(elbow_angle)
             else:
                 shot_tracking[shot_number]["release_frames"] = shot_tracking[shot_number]["release_frames"] + 1
