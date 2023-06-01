@@ -7,6 +7,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.patches as patches
 import os
+import scipy.optimize as optimize
 
 def ball_under_basket(bball, rim, threshold):
     ball_x = (bball[0] + bball[2]) / 2
@@ -202,15 +203,20 @@ def trajectory_fit(shot_tracking, height, width, folder_path):
                 file_path = os.path.join(folder_path, file_name)
                 os.remove(file_path)
 
-    print("SHOT TRACKING",len(shot_tracking))
+    print("SHOT TRACKING", len(shot_tracking))
     counter = 1
     for shot in shot_tracking:
-        print("RELEASE FRAMES:",shot_tracking[shot]['release_frames'],len(shot_tracking[shot]['bball']),len(shot_tracking[shot]["release_tracking"]))
+        if shot == len(shot_tracking) - 1:
+            break
+        print("RELEASE FRAMES:", shot_tracking[shot]['release_frames'], len(shot_tracking[shot]['bball']),
+              len(shot_tracking[shot]["release_tracking"]))
         balls = shot_tracking[shot]['bball']
         rims = shot_tracking[shot]['rim']
         release_tracking = shot_tracking[shot]['release_tracking']
-        print("RELEASE TRACKING:",release_tracking)
+        print("RELEASE TRACKING:", release_tracking)
         trace = np.full((height, width, 3), 255, np.uint8)
+        x_data = []
+        y_data = []
         for i in range(len(balls)):
             box = balls[i]
             if box is not None and release_tracking[i] != False:
@@ -220,6 +226,24 @@ def trajectory_fit(shot_tracking, height, width, folder_path):
                 center_y = (y_min + y_max) // 2
                 radius = min((x_max - x_min) // 2, (y_max - y_min) // 2)
                 cv2.circle(trace, (center_x, center_y), radius, (0, 0, 255), 2)  
+                x_data.append(center_x)
+                y_data.append(center_y)
+
+        # Perform curve fitting
+        def curve_func(x, a, b, c):
+            return a * x**2 + b * x + c
+
+        if(len(x_data) > 0 and len(y_data) > 0):
+
+            params, _ = optimize.curve_fit(curve_func, x_data, y_data)
+
+            # Generate curve points
+            curve_x = np.linspace(min(x_data), max(x_data), 100)
+            curve_y = curve_func(curve_x, *params)
+
+            # Plot curve
+            for i in range(len(curve_x) - 1):
+                cv2.line(trace, (int(curve_x[i]), int(curve_y[i])), (int(curve_x[i + 1]), int(curve_y[i + 1])), (0, 0, 255), 2)
 
         for box in rims:
             if box is not None:
@@ -244,6 +268,8 @@ def getVideoStreams(video_path):
     shooting_time = []
     release_angle = []
     make_or_miss = []
+    knee_angles = []
+    elbow_angles = []
 
     output_file = '../output/output_video.mp4'
 
@@ -343,13 +369,18 @@ def getVideoStreams(video_path):
             if release_started and ball_near_body(boxes, classes, right_hand_coordinates, left_hand_coordinates, 100):
                 cv2.putText(frame, "RELEASE STARTED", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
                 release_ended = False
-
+                knee_angle_min = 366
+                elbow_angle_min = 366
             else:
                 release_started = False
         elif release_started and not release_ended:
             shot_tracking[shot_number]["release_frames"] = shot_tracking[shot_number]["release_frames"] + 1
             shot_tracking[shot_number]["release_tracking"].append(True)
             release_ended = release_end(boxes, classes, right_hand_coordinates, 120)
+            if knee_angle > 90:
+                knee_angle_min = min(knee_angle_min, knee_angle)
+            if elbow_angle > 90:
+                elbow_angle_min = min(elbow_angle_min, elbow_angle)
             if release_ended:
                 cv2.putText(frame, "RELEASE ENDED", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
                 release_ended = True
@@ -378,6 +409,8 @@ def getVideoStreams(video_path):
                                                     "release_tracking": []
                                                 }
                     tracking_shot = False
+                    knee_angles.append(knee_angle_min)
+                    elbow_angles.append(elbow_angle_min)
             elif coords_tracking["distances"][-1] > coords_tracking["distances"][-2] and coords_tracking["bball"][-1] is not None and coords_tracking["rim"][-1] is not None:
                 shot_tracking[shot_number]["release_tracking"].append(False)
                 cv2.putText(frame, "BALL MOVING AWAY", (int(width/4), int(height/4)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
@@ -394,6 +427,8 @@ def getVideoStreams(video_path):
                                                     "release_frames": 0,
                                                     "release_tracking": []
                                                 }
+                    knee_angles.append(knee_angle_min)
+                    elbow_angles.append(elbow_angle_min)
                 else:
                     make_or_miss.append('Miss')
                     cv2.putText(frame, "MISS", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
@@ -406,6 +441,8 @@ def getVideoStreams(video_path):
                                                     "release_frames": 0,
                                                     "release_tracking": []
                                                 }
+                    knee_angles.append(knee_angle)
+                    elbow_angles.append(elbow_angle)
             else:
                 shot_tracking[shot_number]["release_frames"] = shot_tracking[shot_number]["release_frames"] + 1
                 shot_tracking[shot_number]["release_tracking"].append(True)
@@ -429,7 +466,8 @@ def getVideoStreams(video_path):
     output_video.release()
     for i in range(len(release_angle)):
         shooting_time.append(shot_tracking[i+1]['release_frames'])
-    return shooting_time[0:len(make_or_miss)],release_angle[0:len(make_or_miss)], make_or_miss
+    elbow_angles = [x-90 for x in elbow_angles]
+    return shooting_time[0:len(make_or_miss)],release_angle[0:len(make_or_miss)], make_or_miss, knee_angles, elbow_angles, fps
 
 def detect_API(img, img_path,response):
 

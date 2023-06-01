@@ -14,9 +14,8 @@ def convert_to_mp4(input_path, output_path):
     video.write_videofile(output_path, codec='libx264')
 
 def process_video(video_path):
-    
-    shooting_time, release_angle, make_or_miss = getVideoStreams(video_path)
-    return shooting_time, release_angle, make_or_miss
+    shooting_time, release_angle, make_or_miss, knee_angles, elbow_angles, fps = getVideoStreams(video_path)
+    return shooting_time, release_angle, make_or_miss, knee_angles, elbow_angles, fps
 
 # Function to display the processed video
 def display_video(video_path):
@@ -35,12 +34,20 @@ def display_chart():
     st.pyplot(fig)
 
 # Function to display a table
-def display_table(shooting_time, release_angle, make_or_miss):
+def display_table(shooting_time, release_angle, make_or_miss, knee_angles, elbow_angles, fps):
+    shooting_time = [i/fps for i in shooting_time]
     # Create a sample DataFrame
+    shooting_time = np.round(shooting_time,3)
+    release_angle = np.round(release_angle,3)
+    knee_angles = np.round(knee_angles,3)
+    elbow_angles = np.round(elbow_angles,3)
+
     data = {
         'Shooting Time (Sec)': shooting_time,
         'Release Angle (Deg)': release_angle,
         'Make or Miss': make_or_miss,
+        'Knee Angle (Deg)': knee_angles,
+        'Elbow Angle (Deg)': elbow_angles
     }
 
     print(len(release_angle),len(make_or_miss))
@@ -50,7 +57,9 @@ def display_table(shooting_time, release_angle, make_or_miss):
     make_percentage = (make_count / total_shots) * 100
     mean_shooting_time = np.mean(shooting_time)
     mean_release_angle = np.mean(release_angle)
-    average_row = ['Avg '+str(np.round(mean_shooting_time,2))+' sec','Avg ' + str(np.round(mean_release_angle,2)) + ' Deg',str(make_percentage) + '% Shooting Percent']
+    mean_knee_angle = np.mean(knee_angles)
+    mean_elbow_angle = np.mean(elbow_angles)
+    average_row = [str(np.round(mean_shooting_time,2))+' sec',str(np.round(mean_release_angle,2)) + " Deg", str(np.round(make_percentage)) + '% Shooting Percent', str(np.round(mean_knee_angle,2)) + ' Deg', str(np.round(mean_elbow_angle,2)) + ' Deg']
     #average_row = ['Avg ' + str(np.round(mean_release_angle,2)) + ' Deg',str(make_percentage) + '% Shooting Percent']
     new_row_df = pd.DataFrame([average_row], columns=df.columns)
     df_with_new_row = pd.concat([df, new_row_df], ignore_index=True)
@@ -64,23 +73,32 @@ def display_table(shooting_time, release_angle, make_or_miss):
 # Function to display a table
 def display_table_comparison(metrics_A, metrics_B):
     # Create a sample DataFrame
+    metrics_A[0] = [i/metrics_A[5] for i in metrics_A[0]]
+    metrics_B[0] = [i/metrics_B[5] for i in metrics_B[0]]
+
 
     make_count_A = metrics_A[2].count('Make')
     total_shots_A = len(metrics_A[2])
     make_percentage_A = (make_count_A / total_shots_A) * 100
     avg_shooting_time_A = np.round(np.mean(metrics_A[0]),2)
     avg_releasing_angle_A = np.round(np.mean(metrics_A[1]),2)
+    avg_knee_angle_A = np.round(np.mean(metrics_A[3]),2)
+    avg_elbow_angle_A = np.round(np.mean(metrics_A[4]),2)
 
     make_count_B = metrics_B[2].count('Make')
     total_shots_B = len(metrics_B[2])
     make_percentage_B = (make_count_B / total_shots_B) * 100
     avg_shooting_time_B = np.round(np.mean(metrics_B[0]),2)
     avg_releasing_angle_B = np.round(np.mean(metrics_B[1]),2)
+    avg_knee_angle_B = np.round(np.mean(metrics_B[3]),2)
+    avg_elbow_angle_B = np.round(np.mean(metrics_B[4]),2)
 
     data = {
         'Average Shooting Time (Sec)': [avg_shooting_time_A, avg_shooting_time_B],
         'Average Release Angle (Deg)': [avg_releasing_angle_A, avg_releasing_angle_B],
         'Shooting%': [make_percentage_A, make_percentage_B],
+        'Average Knee Angle (Deg)': [avg_knee_angle_A, avg_knee_angle_B],
+        'Average Elbow Angle (Deg)': [avg_elbow_angle_A, avg_elbow_angle_B]
     }
     df = pd.DataFrame(data)
     df.index = ['Player','Comparison']
@@ -108,7 +126,7 @@ def main():
 
             # Perform video postprocessing
             with st.spinner('Processing video...'):
-                shooting_time, release_angle, make_or_miss = process_video(video_path)
+                shooting_time, release_angle, make_or_miss, knee_angles, elbow_angles, fps = process_video(video_path)
 
             # Display processed video
             #convert_to_mp4('../output/output_video.mp4','../output/output_video2.mp4')
@@ -124,7 +142,7 @@ def main():
             st.video(input_path)
 
             st.subheader('Table')
-            display_table(shooting_time, release_angle, make_or_miss)
+            display_table(shooting_time, release_angle, make_or_miss, knee_angles, elbow_angles, fps)
 
         if(video_file is not None):
             st.subheader("Shot Traces")
@@ -171,9 +189,9 @@ def main():
 
             # Perform video postprocessing
             with st.spinner('Processing video...'):
-                shooting_time_p, release_angle_p, make_or_miss_p = process_video(video_player_path)
+                shooting_time_p, release_angle_p, make_or_miss_p, knee_angles_p, elbow_angles_p, fps_p = process_video(video_player_path)
                 convert_to_mp4('../output/output_video.mp4','../output/output_comparison/output_video_player.mp4')
-                shooting_time_c, release_angle_c, make_or_miss_c = process_video(video_comparison_path)
+                shooting_time_c, release_angle_c, make_or_miss_c, knee_angles_c, elbow_angles_c, fps_c = process_video(video_comparison_path)
                 convert_to_mp4('../output/output_video.mp4','../output/output_comparison/output_video_comparison.mp4')
 
 
@@ -192,8 +210,8 @@ def main():
 
             st.subheader('Comparison Table')
             display_table_comparison(
-                                     [shooting_time_p, release_angle_p, make_or_miss_p],
-                                     [shooting_time_c, release_angle_c, make_or_miss_c]
+                                     [shooting_time_p, release_angle_p, make_or_miss_p, knee_angles_p, elbow_angles_p, fps_p],
+                                     [shooting_time_c, release_angle_c, make_or_miss_c, knee_angles_c, elbow_angles_c, fps_c]
                                      )
 if __name__ == '__main__':
     main()
