@@ -71,6 +71,8 @@ def delete_folder_contents(folder_path):
             os.rmdir(file_path)
 
 def get_angles_postions(frame):
+    #write frame
+    # cv2.imwrite('frame.jpg', frame)
     mp_pose = mp.solutions.pose
     pose = mp_pose.Pose()
     mp_drawing = mp.solutions.drawing_utils
@@ -149,6 +151,7 @@ def release_start(boxes, classes, y_elbow):
     else:
         b_index = 1
     y_box = boxes[b_index][3]
+    print(y_box, y_elbow)
     if y_box < y_elbow:
         return True
     else:
@@ -330,14 +333,13 @@ def getVideoStreams(video_path):
             coords_tracking["distances"].append(distance(coords_tracking["rim"][-1], coords_tracking["bball"][-1]))
 
 
-        release_start(boxes, classes, left_shoulder.y*height)
         left_hand_coordinates[0] *= width
         left_hand_coordinates[1] *= height
         right_hand_coordinates[0] *= width
         right_hand_coordinates[1] *= height
         if not release_started:
             shot_tracking[shot_number]["release_tracking"].append(False)
-            release_started = release_start(boxes, classes, head_y*height)
+            release_started = release_start(boxes, classes, left_shoulder.y*height)
             if release_started and ball_near_body(boxes, classes, right_hand_coordinates, left_hand_coordinates, 100):
                 cv2.putText(frame, "RELEASE STARTED", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
                 release_ended = False
@@ -347,7 +349,7 @@ def getVideoStreams(video_path):
         elif release_started and not release_ended:
             shot_tracking[shot_number]["release_frames"] = shot_tracking[shot_number]["release_frames"] + 1
             shot_tracking[shot_number]["release_tracking"].append(True)
-            release_ended = release_end(boxes, classes, left_hand_coordinates, 120)
+            release_ended = release_end(boxes, classes, right_hand_coordinates, 120)
             if release_ended:
                 cv2.putText(frame, "RELEASE ENDED", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
                 release_ended = True
@@ -357,15 +359,26 @@ def getVideoStreams(video_path):
                     release_angle.append(angle)
                     cv2.putText(frame, "ANGLE SHOT: {}".format(round(angle,2)), (int(width/4), int(height/4)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
         elif release_started and release_ended and tracking_shot:
-            # shot_tracking[shot_number]["release_frames"] = shot_tracking[shot_number]["release_frames"] + 1
-            # shot_tracking[shot_number]["release_tracking"].append(True)
-            # if coords_tracking["distances"][-1] - coords_tracking["distances"][-2] > 200:
-            #     coords_tracking["distances"] = coords_tracking["distances"][:-1]
-            #     coords_tracking["bball"] = coords_tracking["bball"][:-1]
-            #     coords_tracking["rim"] = coords_tracking["rim"][:-1]
-            #     output_video.write(frame)
-            #     continue
-            if coords_tracking["distances"][-1] > coords_tracking["distances"][-2] and coords_tracking["bball"][-1] is not None and coords_tracking["rim"][-1] is not None:
+            if coords_tracking["rim"][-1] is not None:
+                rimm = find_suitable_ball(coords_tracking["rim"])
+            else:
+                rimm = find_suitable_ball(coords_tracking["rim"])
+
+            if coords_tracking["bball"][-1] is not None and rimm is not None and ball_under_basket(coords_tracking["bball"][-1], rimm, 100):
+                    make_or_miss.append('Make')
+                    cv2.putText(frame, "SCORE", (int(width/2), int(height/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+                    shot_tracking[shot_number]["result"] = "Make"
+                    shot_tracking[shot_number]["release_tracking"].append(False)
+                    shot_number = shot_number + 1
+                    shot_tracking[shot_number] = {
+                                                    "bball": [],
+                                                    "rim": [],
+                                                    "result": None,
+                                                    "release_frames": 0,
+                                                    "release_tracking": []
+                                                }
+                    tracking_shot = False
+            elif coords_tracking["distances"][-1] > coords_tracking["distances"][-2] and coords_tracking["bball"][-1] is not None and coords_tracking["rim"][-1] is not None:
                 shot_tracking[shot_number]["release_tracking"].append(False)
                 cv2.putText(frame, "BALL MOVING AWAY", (int(width/4), int(height/4)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
                 tracking_shot = False
@@ -412,7 +425,7 @@ def getVideoStreams(video_path):
         output_video.write(frame)
     trajectory_fit(shot_tracking,height,width,'../output/traces/')
     os.remove("temp.jpg")
-    delete_folder_contents(runs_folder)
+    # delete_folder_contents(runs_folder)
     output_video.release()
     for i in range(len(release_angle)):
         shooting_time.append(shot_tracking[i+1]['release_frames'])
@@ -467,13 +480,13 @@ def detect_API(img, img_path,response):
 
             if(int(classes[0][i]) == 0):  # basketball
                 cv2.circle(img=img, center=(xCoor, yCoor), radius=25,color=(255, 0, 0), thickness=-1)
-                cv2.putText(img, "BALL", (xCoor - 50, yCoor - 50),cv2.FONT_HERSHEY_COMPLEX, 3, (255, 0, 0), 8)
+                # cv2.putText(img, "BALL", (xCoor - 50, yCoor - 50),cv2.FONT_HERSHEY_COMPLEX, 3, (255, 0, 0), 2)
             if(int(classes[0][i]) == 2):  # Rim
                 cv2.rectangle(img, (xmin, ymax),(xmax, ymin), (48, 124, 255), 10)
-                cv2.putText(img, "HOOP", (xCoor - 65, yCoor - 65),cv2.FONT_HERSHEY_COMPLEX, 3, (48, 124, 255), 8)
+                # cv2.putText(img, "HOOP", (xCoor - 65, yCoor - 65),cv2.FONT_HERSHEY_COMPLEX, 3, (48, 124, 255), 2)
 
 
     return img,boxes,scores,classes, height, width
 
 if __name__ == '__main__':
-    print(getVideoStreams('../input/uploaded_video.mp4'))
+    print(getVideoStreams('/Users/simonzouki/Documents/Northwestern/Q3/CV/project/basketball-shot-analysis/input/IMG_9136.mp4'))
