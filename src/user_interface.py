@@ -131,12 +131,6 @@ def main():
             # Display processed video
             #convert_to_mp4('../output/output_video.mp4','../output/output_video2.mp4')
             input_path = '../output/output_video.mp4'
-            '''
-            output_path = '../output/output_video2.mp4'
-
-            command = f"ffmpeg -i {input_path} -c:v libx264 -crf 23 -c:a copy {output_path}"
-            subprocess.check_output(command)
-            '''
 
             st.subheader('Processed Video')
             st.video(input_path)
